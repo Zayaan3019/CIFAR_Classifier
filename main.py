@@ -1,31 +1,29 @@
 import torch
+import torch.optim as optim
 from torch.utils.data import DataLoader
-from transformers import AdamW
-from models.bert_model import get_bert_model
-from utils.data_preprocessing import preprocess_data
-from utils.model_evaluation import evaluate_model
+from torchvision import datasets
+from torchvision import transforms
+from cnn_model import CNNModel
+from utils.data_augmentation import get_transforms
+from utils.model_training import train_model
+from utils.evaluation import evaluate_model
 
-# Load and preprocess data
-train_encodings, train_labels = preprocess_data('data/train.csv')
-test_encodings, test_labels = preprocess_data('data/test.csv')
+# Load dataset
+transform = get_transforms()
+train_data = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+test_data = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
 
-# Define DataLoader
-train_loader = DataLoader(list(zip(train_encodings, train_labels)), batch_size=16, shuffle=True)
-test_loader = DataLoader(list(zip(test_encodings, test_labels)), batch_size=16, shuffle=False)
+train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
+test_loader = DataLoader(test_data, batch_size=64, shuffle=False)
 
-# Initialize model, optimizer, and loss function
-model = get_bert_model(num_labels=2)
-optimizer = AdamW(model.parameters(), lr=2e-5)
+# Initialize model, criterion, and optimizer
+model = CNNModel()
+criterion = torch.nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-# Train model (simplified training loop)
-for epoch in range(3):
-    model.train()
-    for batch in train_loader:
-        optimizer.zero_grad()
-        outputs = model(batch['input_ids'], labels=batch['labels'])
-        loss = outputs.loss
-        loss.backward()
-        optimizer.step()
+# Train the model
+train_model(model, train_loader, criterion, optimizer, num_epochs=10)
 
-# Evaluate model
+# Evaluate the model
 evaluate_model(model, test_loader)
+
